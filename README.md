@@ -1,0 +1,1 @@
+UniTyper is a lightweight, web-based typing practice application designed to help users improve their typing speed and accuracy. Whether you are a student, a professional, or just looking to improve your keyboard skills, UniTyper provides a clean, distraction-free environment to practice.
