@@ -270,22 +270,91 @@ let countdownEndTime = 0;
 let survivalLives = SURVIVAL_LIVES_START;
 
 // -----------------------------------------------------------------------------
-// Sound placeholders
+// Sound system using Web Audio API
 // -----------------------------------------------------------------------------
 
+let audioContext = null;
+
+function getAudioContext() {
+  if (!audioContext) {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return audioContext;
+}
+
 /**
- * Play a sound effect by key.
- * Uncomment the Audio lines once you add files under assets/sounds/.
+ * Play a sound effect using Web Audio API.
+ * Generates simple tones programmatically without requiring external audio files.
  *
  * @param {keyof typeof SOUNDS} name
  */
 function playSound(name) {
   if (window.AppSettings && !AppSettings.isSoundEnabled()) return;
-  // const src = SOUNDS[name];
-  // if (!src) return;
-  // const audio = new Audio(src);
-  // audio.volume = 0.5;
-  // audio.play().catch(() => {});
+
+  try {
+    const ctx = getAudioContext();
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+
+    const now = ctx.currentTime;
+
+    // Different sounds for different events
+    switch (name) {
+      case "keyCorrect":
+        // Pleasant high-pitched beep for correct keystrokes
+        oscillator.frequency.setValueAtTime(800, now);
+        oscillator.frequency.exponentialRampToValueAtTime(1200, now + 0.05);
+        gainNode.gain.setValueAtTime(0.1, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+        oscillator.start(now);
+        oscillator.stop(now + 0.05);
+        break;
+
+      case "keyError":
+        // Lower error tone for mistakes
+        oscillator.type = "sawtooth";
+        oscillator.frequency.setValueAtTime(200, now);
+        oscillator.frequency.exponentialRampToValueAtTime(100, now + 0.1);
+        gainNode.gain.setValueAtTime(0.15, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+        oscillator.start(now);
+        oscillator.stop(now + 0.1);
+        break;
+
+      case "combo":
+        // Ascending arpeggio for combo
+        oscillator.frequency.setValueAtTime(523.25, now); // C5
+        oscillator.frequency.setValueAtTime(659.25, now + 0.05); // E5
+        oscillator.frequency.setValueAtTime(783.99, now + 0.1); // G5
+        gainNode.gain.setValueAtTime(0.1, now);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+        oscillator.start(now);
+        oscillator.stop(now + 0.15);
+        break;
+
+      case "gameComplete":
+        // Success chord - play multiple oscillators
+        const frequencies = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        frequencies.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.frequency.setValueAtTime(freq, now);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+          osc.start(now);
+          osc.stop(now + 0.3);
+        });
+        break;
+    }
+  } catch (e) {
+    // Silently fail if audio is not supported
+    console.warn("Audio playback failed:", e);
+  }
 }
 
 function getGameMode() {
